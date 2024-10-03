@@ -34,7 +34,6 @@
         #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
         #uploadLabel:hover { background-color: #45a049; }
     </style>
-    </style>
 </head>
 <body>
     <div class="container">
@@ -120,14 +119,7 @@
         </div>
 
         <div id="receiptTab" class="tab-content">
-            <h2>พิมพ์ใบเสร็จรับเงิน</h2>
-            <form id="receiptForm">
-                <input type="text" id="receiptPatientName" placeholder="ชื่อผู้ป่วย" required>
-                <input type="date" id="receiptTreatmentDate" required>
-                <textarea id="receiptTreatmentDescription" placeholder="รายการรักษา" required></textarea>
-                <input type="number" id="receiptAmount" placeholder="จำนวนเงิน (บาท)" required>
-                <button type="button" onclick="printReceipt()">พิมพ์ใบเสร็จ</button>
-            </form>
+            <!-- ReceiptTab component will be rendered here -->
         </div>
     </div>
 
@@ -501,61 +493,6 @@
         }
 
         function printMedicalCertificate(patientHN, treatmentDate) {
-
-        function printReceipt() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
-            doc.setFont('Sarabun');
-
-            doc.setFontSize(16);
-            doc.text('ใบเสร็จรับเงิน / Receipt', 105, 20, { align: 'center' });
-
-            doc.setFontSize(12);
-            doc.text(`ชื่อผู้ป่วย: ${document.getElementById('receiptPatientName').value}`, 20, 40);
-            doc.text(`วันที่รับการรักษา: ${document.getElementById('receiptTreatmentDate').value}`, 20, 50);
-            doc.text(`รายการรักษา: ${document.getElementById('receiptTreatmentDescription').value}`, 20, 60);
-            doc.text(`จำนวนเงิน: ${document.getElementById('receiptAmount').value} บาท`, 20, 70);
-
-            doc.text('ลงชื่อ..................................', 130, 100);
-            doc.text('(ดร. สมศักดิ์ รักษาดี)', 135, 110);
-            doc.text('แพทย์ผู้รักษา', 145, 120);
-
-            doc.save('receipt.pdf');
-        }
-
-        function showTreatmentDetail(patientHN, treatmentDate) {
-            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
-            if (treatment) {
-                const detailContent = `
-                    <h3>รายละเอียดการรักษา</h3>
-                    <p><strong>วันที่:</strong> ${treatment.date}</p>
-                    <p><strong>Vital Signs:</strong></p>
-                    <ul>
-                        <li>ความดันโลหิต: ${treatment.vitalSigns.bloodPressure}</li>
-                        <li>ชีพจร: ${treatment.vitalSigns.pulse}</li>
-                        <li>อุณหภูมิ: ${treatment.vitalSigns.temperature}</li>
-                        <li>อัตราการหายใจ: ${treatment.vitalSigns.respiratoryRate}</li>
-                    </ul>
-                    <p><strong>อาการ:</strong> ${treatment.symptoms}</p>
-                    <p><strong>การวินิจฉัย:</strong> ${treatment.diagnosis}</p>
-                    <p><strong>การรักษา:</strong> ${treatment.treatment}</p>
-                    <p><strong>ยาที่ได้รับ:</strong> ${treatment.medication}</p>
-                    <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
-                    <h4>Body Chart:</h4>
-                    <img src="${treatment.bodyChart}" alt="Body Chart" style="max-width: 100%; height: auto;">
-                `;
-                document.getElementById('treatmentDetailContent').innerHTML = detailContent;
-                document.getElementById('treatmentDetailModal').style.display = 'block';
-
-                // Populate receipt form
-                document.getElementById('receiptPatientName').value = patients.find(p => p.hn === patientHN).name;
-                document.getElementById('receiptTreatmentDate').value = treatment.date;
-                document.getElementById('receiptTreatmentDescription').value = `${treatment.diagnosis} - ${treatment.treatment}`;
-            }
-        }
-
             const patient = patients.find(p => p.hn === patientHN);
             const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
             
