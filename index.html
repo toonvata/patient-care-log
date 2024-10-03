@@ -34,9 +34,624 @@
         #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
         #uploadLabel:hover { background-color: #45a049; }
     </style>
+    </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div class="container">
+        <h1>ระบบบันทึกประวัติผู้ป่วยและการรักษา</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('patientTab')">ข้อมูลผู้ป่วย</button>
+            <button class="tab" id="treatmentTab" onclick="showTab('treatmentTabContent')">บันทึกการรักษา</button>
+            <button class="tab" onclick="showTab('receiptTab')">พิมพ์ใบเสร็จ</button>
+        </div>
+        
+        <div id="patientTab" class="tab-content active">
+            <h2>บันทึกข้อมูลผู้ป่วย</h2>
+            <form id="patientForm">
+                <input type="text" id="hn" placeholder="HN (สร้างอัตโนมัติ)" readonly>
+                <input type="text" id="name" placeholder="ชื่อ-นามสกุล" required>
+                <input type="date" id="birthdate" required>
+                <input type="text" id="occupation" placeholder="อาชีพ">
+                <textarea id="address" placeholder="ที่อยู่"></textarea>
+                <input type="tel" id="phone" placeholder="เบอร์โทรศัพท์">
+                <textarea id="underlyingDisease" placeholder="โรคประจำตัว"></textarea>
+                <textarea id="allergies" placeholder="ประวัติการแพ้ยา"></textarea>
+                <button type="submit">บันทึกข้อมูล</button>
+            </form>
+            
+            <h2>รายชื่อผู้ป่วย</h2>
+            <input type="text" id="patientSearch" placeholder="ค้นหาผู้ป่วย (ชื่อหรือ HN)">
+            <table id="patientList">
+                <thead>
+                    <tr>
+                        <th>HN</th>
+                        <th>ชื่อ-นามสกุล</th>
+                        <th>วันเกิด</th>
+                        <th>เบอร์โทรศัพท์</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div id="treatmentTabContent" class="tab-content">
+            <h2>บันทึกการรักษา</h2>
+            <input type="text" id="treatmentPatientSearch" placeholder="ค้นหาผู้ป่วย (ชื่อหรือ HN)">
+            <div id="selectedPatientInfo" class="patient-info-box"></div>
+            <form id="treatmentForm">
+                <input type="date" id="treatmentDate" required>
+                <fieldset>
+                    <legend>Vital Signs</legend>
+                    <input type="text" id="bloodPressure" placeholder="ความดันโลหิต">
+                    <input type="number" id="pulse" placeholder="ชีพจร">
+                    <input type="number" id="temperature" placeholder="อุณหภูมิ">
+                    <input type="number" id="respiratoryRate" placeholder="อัตราการหายใจ">
+                </fieldset>
+                <textarea id="symptoms" placeholder="อาการ"></textarea>
+                <textarea id="diagnosis" placeholder="การวินิจฉัย"></textarea>
+                <textarea id="treatment" placeholder="การรักษา"></textarea>
+                <textarea id="medication" placeholder="ยาที่ได้รับ"></textarea>
+                <input type="date" id="nextAppointment" placeholder="วันนัดครั้งต่อไป">
+                <div id="bodyChartContainer">
+                    <img id="bodyChartImage" src="/api/placeholder/300/400" alt="Body Chart">
+                    <canvas id="bodyChart" width="600" height="800"></canvas>
+                </div>
+                <input type="file" id="imageUpload" accept="image/*">
+                <label for="imageUpload" id="uploadLabel">อัพโหลดรูปภาพ</label>
+                <button type="button" onclick="clearBodyChart()">ล้างรูปวาด</button>
+                <button type="submit">บันทึกการรักษา</button>
+            </form>
+            
+            <h2>ประวัติการรักษา</h2>
+            <table id="treatmentHistory">
+                <thead>
+                    <tr>
+                        <th>วันที่</th>
+                        <th>อาการ</th>
+                        <th>การวินิจฉัย</th>
+                        <th>การรักษา</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="receiptTab" class="tab-content">
+            <h2>พิมพ์ใบเสร็จรับเงิน</h2>
+            <form id="receiptForm">
+                <input type="text" id="receiptPatientName" placeholder="ชื่อผู้ป่วย" required>
+                <input type="date" id="receiptTreatmentDate" required>
+                <textarea id="receiptTreatmentDescription" placeholder="รายการรักษา" required></textarea>
+                <input type="number" id="receiptAmount" placeholder="จำนวนเงิน (บาท)" required>
+                <button type="button" onclick="printReceipt()">พิมพ์ใบเสร็จ</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="treatmentDetailModal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px;">
+            <span style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;" onclick="closeTreatmentDetailModal()">&times;</span>
+            <div id="treatmentDetailContent"></div>
+        </div>
+    </div>
+     
+    <script>
+        let patients = JSON.parse(localStorage.getItem('patients')) || [];
+        let treatments = JSON.parse(localStorage.getItem('treatments')) || [];
+        let selectedPatient = null;
+        let canvas;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBodyChart();
+            loadPatients();
+            document.getElementById('patientForm').addEventListener('submit', addPatient);
+            document.getElementById('treatmentForm').addEventListener('submit', addTreatment);
+            document.getElementById('patientSearch').addEventListener('input', searchPatients);
+            document.getElementById('treatmentPatientSearch').addEventListener('input', searchPatientsForTreatment);
+            addSampleData();
+            loadCanvasState();
+        });
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+
+            if (tabId === 'receiptTab') {
+                renderReceiptTab();
+            }
+        }
+
+        function renderReceiptTab() {
+            const receiptTab = document.getElementById('receiptTab');
+            if (!receiptTab.hasChildNodes()) {
+                const receiptComponent = document.createElement('div');
+                receiptComponent.id = 'receiptComponent';
+                receiptTab.appendChild(receiptComponent);
+                
+                // Render the React component
+                ReactDOM.render(React.createElement(ReceiptTab), receiptComponent);
+            }
+        }
+
+        function initializeBodyChart() {
+            canvas = new fabric.Canvas('bodyChart', {
+                width: 600,
+                height: 800
+            });
+
+            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
+                img.scaleToWidth(canvas.width);
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush.width = 2;
+                canvas.freeDrawingBrush.color = "#0d0000";
+            });
+
+            canvas.on('path:created', function() {
+                saveCanvasState();
+            });
+
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                fabric.Image.fromURL(event.target.result, function(img) {
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                        scaleX: canvas.width / img.width,
+                        scaleY: canvas.height / img.height
+                    });
+                });
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        function saveCanvasState() {
+            localStorage.setItem('bodyChartState', JSON.stringify(canvas.toJSON()));
+        }
+
+        function loadCanvasState() {
+            const savedState = localStorage.getItem('bodyChartState');
+            if (savedState) {
+                canvas.loadFromJSON(savedState, canvas.renderAll.bind(canvas));
+            }
+        }
+
+        function clearBodyChart() {
+            canvas.clear();
+            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
+                img.scaleToWidth(canvas.width);
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            });
+        }
+
+        function addPatient(e) {
+            e.preventDefault();
+            const patient = {
+                hn: generateHN(),
+                name: document.getElementById('name').value,
+                birthdate: document.getElementById('birthdate').value,
+                occupation: document.getElementById('occupation').value,
+                address: document.getElementById('address').value,
+                phone: document.getElementById('phone').value,
+                underlyingDisease: document.getElementById('underlyingDisease').value,
+                allergies: document.getElementById('allergies').value
+            };
+            patients.push(patient);
+            savePatients();
+            loadPatients();
+            e.target.reset();
+        }
+
+        function addTreatment(e) {
+            e.preventDefault();
+            if (!selectedPatient) {
+                alert('กรุณาเลือกผู้ป่วยก่อนบันทึกการรักษา');
+                return;
+            }
+            const treatment = {
+                patientHN: selectedPatient.hn,
+                date: document.getElementById('treatmentDate').value,
+                vitalSigns: {
+                    bloodPressure: document.getElementById('bloodPressure').value,
+                    pulse: document.getElementById('pulse').value,
+                    temperature: document.getElementById('temperature').value,
+                    respiratoryRate: document.getElementById('respiratoryRate').value
+                },
+                symptoms: document.getElementById('symptoms').value,
+                diagnosis: document.getElementById('diagnosis').value,
+                treatment: document.getElementById('treatment').value,
+                medication: document.getElementById('medication').value,
+                nextAppointment: document.getElementById('nextAppointment').value,
+                bodyChart: canvas.toDataURL()
+            };
+            treatments.push(treatment);
+            saveTreatments();
+            loadTreatmentHistory();
+            e.target.reset();
+            clearBodyChart();
+        }
+
+        function generateHN() {
+            return 'HN' + Date.now().toString().slice(-6);
+        }
+
+        function savePatients() {
+            localStorage.setItem('patients', JSON.stringify(patients));
+        }
+
+        function saveTreatments() {
+            localStorage.setItem('treatments', JSON.stringify(treatments));
+        }
+
+        function loadPatients() {
+            const tbody = document.querySelector('#patientList tbody');
+            tbody.innerHTML = '';
+            patients.forEach(patient => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = patient.hn;
+                row.insertCell(1).textContent = patient.name;
+                row.insertCell(2).textContent = patient.birthdate;
+                row.insertCell(3).textContent = patient.phone;
+                const actionsCell = row.insertCell(4);
+                actionsCell.innerHTML = `
+                    <button onclick="selectPatientForTreatment('${patient.hn}')">รักษา</button>
+                    <button onclick="deletePatient('${patient.hn}')">ลบ</button>
+                `;
+            });
+        }
+
+        function selectPatient(patient) {
+            selectedPatient = patient;
+            document.getElementById('selectedPatientInfo').innerHTML = `
+                <h3>ข้อมูลผู้ป่วย</h3>
+                <p><strong>HN:</strong> ${patient.hn}</p>
+                <p><strong>ชื่อ-นามสกุล:</strong> ${patient.name}</p>
+                <p><strong>วันเกิด:</strong> ${patient.birthdate}</p>
+                <p><strong>อาชีพ:</strong> ${patient.occupation}</p>
+                <p><strong>ที่อยู่:</strong> ${patient.address}</p>
+                <p><strong>เบอร์โทรศัพท์:</strong> ${patient.phone}</p>
+                <p><strong>โรคประจำตัว:</strong> ${patient.underlyingDisease}</p>
+                <p><strong>ประวัติการแพ้ยา:</strong> ${patient.allergies}</p>
+            `;
+            loadTreatmentHistory();
+            
+            const latestTreatment = treatments
+                .filter(t => t.patientHN === patient.hn)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+            
+            if (latestTreatment && latestTreatment.bodyChart) {
+                updateBodyChart(latestTreatment.bodyChart);
+            } else {
+                clearBodyChart();
+            }
+        }
+
+        function loadTreatmentHistory() {
+            if (!selectedPatient) return;
+            const tbody = document.querySelector('#treatmentHistory tbody');
+            tbody.innerHTML = '';
+            treatments
+                .filter(t => t.patientHN === selectedPatient.hn)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .forEach(treatment => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = treatment.date;
+                    row.insertCell(1).textContent = treatment.symptoms;
+                    row.insertCell(2).textContent = treatment.diagnosis;
+                    row.insertCell(3).textContent = treatment.treatment;
+                    const actionsCell = row.insertCell(4);
+                    actionsCell.innerHTML = `
+                        <button onclick="showTreatmentDetail('${treatment.patientHN}', '${treatment.date}')">รายละเอียด</button>
+                        <button onclick="deleteTreatment('${treatment.patientHN}', '${treatment.date}')">ลบ</button>
+                        <button onclick="printMedicalCertificate('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบรับรองแพทย์</button>
+                        <button onclick="saveMedicalCertificatePDF('${treatment.patientHN}', '${treatment.date}')">บันทึก PDF</button>
+                        <button onclick="printReceipt('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบเสร็จ</button>
+                    `;
+                });
+        }
+
+        function searchPatients() {
+            const query = document.getElementById('patientSearch').value.toLowerCase();
+            const filteredPatients = patients.filter(patient => 
+                patient.name.toLowerCase().includes(query) || patient.hn.toLowerCase().includes(query)
+            );
+            const tbody = document.querySelector('#patientList tbody');
+            tbody.innerHTML = '';
+            filteredPatients.forEach(patient => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = patient.hn;
+                row.insertCell(1).textContent = patient.name;
+                row.insertCell(2).textContent = patient.birthdate;
+                row.insertCell(3).textContent = patient.phone;
+                const actionsCell = row.insertCell(4);
+                actionsCell.innerHTML = `
+                    <button onclick="selectPatientForTreatment('${patient.hn}')">รักษา</button>
+                    <button onclick="deletePatient('${patient.hn}')">ลบ</button>
+                `;
+            });
+        }
+
+        function searchPatientsForTreatment() {
+            const query = document.getElementById('treatmentPatientSearch').value.toLowerCase();
+            const filteredPatients = patients.filter(patient => 
+                patient.name.toLowerCase().includes(query) || patient.hn.toLowerCase().includes(query)
+            );
+            if (filteredPatients.length === 1) {
+                selectPatient(filteredPatients[0]);
+            } else {
+                selectedPatient = null;
+                document.getElementById('selectedPatientInfo').innerHTML = '';
+            }
+        }
+
+        function deletePatient(hn) {
+            if (confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลผู้ป่วยรายนี้?')) {
+                patients = patients.filter(p => p.hn !== hn);
+                treatments = treatments.filter(t => t.patientHN !== hn);
+                savePatients();
+                saveTreatments();
+                loadPatients();
+                alert('ลบข้อมูลผู้ป่วยเรียบร้อยแล้ว');
+            }
+        }
+
+        function selectPatientForTreatment(hn) {
+            const patient = patients.find(p => p.hn === hn);
+            if (patient) {
+                showTab('treatmentTabContent');
+                selectPatient(patient);
+            }
+        }
+
+        function showTreatmentDetail(patientHN, treatmentDate) {
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (treatment) {
+                const detailContent = `
+                    <h3>รายละเอียดการรักษา</h3>
+                    <p><strong>วันที่:</strong> ${treatment.date}</p>
+                    <p><strong>Vital Signs:</strong></p>
+                    <ul>
+                        <li>ความดันโลหิต: ${treatment.vitalSigns.bloodPressure}</li>
+                        <li>ชีพจร: ${treatment.vitalSigns.pulse}</li>
+                        <li>อุณหภูมิ: ${treatment.vitalSigns.temperature}</li>
+                        <li>อัตราการหายใจ: ${treatment.vitalSigns.respiratoryRate}</li>
+                    </ul>
+                    <p><strong>อาการ:</strong> ${treatment.symptoms}</p>
+                    <p><strong>การวินิจฉัย:</strong> ${treatment.diagnosis}</p>
+                    <p><strong>การรักษา:</strong> ${treatment.treatment}</p>
+                    <p><strong>ยาที่ได้รับ:</strong> ${treatment.medication}</p>
+                    <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
+                    <h4>Body Chart:</h4>
+                    <img src="${treatment.bodyChart}" alt="Body Chart" style="max-width: 100%; height: auto;">
+                `;
+                document.getElementById('treatmentDetailContent').innerHTML = detailContent;
+                document.getElementById('treatmentDetailModal').style.display = 'block';
+            }
+        }
+
+        function closeTreatmentDetailModal() {
+            document.getElementById('treatmentDetailModal').style.display = 'none';
+        }
+
+        function deleteTreatment(patientHN, treatmentDate) {
+            if (confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลการรักษานี้?')) {
+                treatments = treatments.filter(t => !(t.patientHN === patientHN && t.date === treatmentDate));
+                saveTreatments();
+                loadTreatmentHistory();
+                alert('ลบข้อมูลการรักษาเรียบร้อยแล้ว');
+            }
+        }
+
+        function addSampleData() {
+            if (patients.length === 0) {
+                const samplePatients = [
+                    { name: "สมชาย ใจดี", birthdate: "1980-05-15", occupation: "วิศวกร", address: "123 ถ.สุขุมวิท กรุงเทพฯ", phone: "0812345678", underlyingDisease: "ความดันโลหิตสูง", allergies: "ยาเพนนิซิลิน" },
+                    { name: "สมหญิง รักดี", birthdate: "1992-10-20", occupation: "ครู", address: "456 ถ.พหลโยธิน กรุงเทพฯ", phone: "0898765432", underlyingDisease: "เบาหวาน", allergies: "ไม่มี" }
+                ];
+
+                samplePatients.forEach(patient => {
+                    patient.hn = generateHN();
+                    patients.push(patient);
+                });
+
+                savePatients();
+                loadPatients();
+
+                const sampleTreatments = [
+                    { 
+                        patientHN: patients[0].hn, 
+                        date: "2024-03-01", 
+                        vitalSigns: { bloodPressure: "120/80", pulse: 72, temperature: 37, respiratoryRate: 16 }, 
+                        symptoms: "ปวดศีรษะ", 
+                        diagnosis: "ความเครียด", 
+                        treatment: "พักผ่อน", 
+                        medication: "พาราเซตามอล", 
+                        nextAppointment: "2024-03-15",
+                        bodyChart: "" // ไม่มีรูปวาดสำหรับข้อมูลตัวอย่าง
+                    },
+                    { 
+                        patientHN: patients[1].hn, 
+                        date: "2024-03-02", 
+                        vitalSigns: { bloodPressure: "130/85", pulse: 78, temperature: 37.5, respiratoryRate: 18 }, 
+                        symptoms: "ไอ เจ็บคอ", 
+                        diagnosis: "ไข้หวัด", 
+                        treatment: "พักผ่อน ดื่มน้ำมากๆ", 
+                        medication: "ยาแก้ไอ ยาลดไข้", 
+                        nextAppointment: "2024-03-09",
+                        bodyChart: "" // ไม่มีรูปวาดสำหรับข้อมูลตัวอย่าง
+                    }
+                ];
+
+                sampleTreatments.forEach(treatment => {
+                    treatments.push(treatment);
+                });
+
+                saveTreatments();
+            }
+        }
+
+        function printMedicalCertificate(patientHN, treatmentDate) {
+
+        function printReceipt() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
+            doc.setFont('Sarabun');
+
+            doc.setFontSize(16);
+            doc.text('ใบเสร็จรับเงิน / Receipt', 105, 20, { align: 'center' });
+
+            doc.setFontSize(12);
+            doc.text(`ชื่อผู้ป่วย: ${document.getElementById('receiptPatientName').value}`, 20, 40);
+            doc.text(`วันที่รับการรักษา: ${document.getElementById('receiptTreatmentDate').value}`, 20, 50);
+            doc.text(`รายการรักษา: ${document.getElementById('receiptTreatmentDescription').value}`, 20, 60);
+            doc.text(`จำนวนเงิน: ${document.getElementById('receiptAmount').value} บาท`, 20, 70);
+
+            doc.text('ลงชื่อ..................................', 130, 100);
+            doc.text('(ดร. สมศักดิ์ รักษาดี)', 135, 110);
+            doc.text('แพทย์ผู้รักษา', 145, 120);
+
+            doc.save('receipt.pdf');
+        }
+
+        function showTreatmentDetail(patientHN, treatmentDate) {
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (treatment) {
+                const detailContent = `
+                    <h3>รายละเอียดการรักษา</h3>
+                    <p><strong>วันที่:</strong> ${treatment.date}</p>
+                    <p><strong>Vital Signs:</strong></p>
+                    <ul>
+                        <li>ความดันโลหิต: ${treatment.vitalSigns.bloodPressure}</li>
+                        <li>ชีพจร: ${treatment.vitalSigns.pulse}</li>
+                        <li>อุณหภูมิ: ${treatment.vitalSigns.temperature}</li>
+                        <li>อัตราการหายใจ: ${treatment.vitalSigns.respiratoryRate}</li>
+                    </ul>
+                    <p><strong>อาการ:</strong> ${treatment.symptoms}</p>
+                    <p><strong>การวินิจฉัย:</strong> ${treatment.diagnosis}</p>
+                    <p><strong>การรักษา:</strong> ${treatment.treatment}</p>
+                    <p><strong>ยาที่ได้รับ:</strong> ${treatment.medication}</p>
+                    <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
+                    <h4>Body Chart:</h4>
+                    <img src="${treatment.bodyChart}" alt="Body Chart" style="max-width: 100%; height: auto;">
+                `;
+                document.getElementById('treatmentDetailContent').innerHTML = detailContent;
+                document.getElementById('treatmentDetailModal').style.display = 'block';
+
+                // Populate receipt form
+                document.getElementById('receiptPatientName').value = patients.find(p => p.hn === patientHN).name;
+                document.getElementById('receiptTreatmentDate').value = treatment.date;
+                document.getElementById('receiptTreatmentDescription').value = `${treatment.diagnosis} - ${treatment.treatment}`;
+            }
+        }
+
+            const patient = patients.find(p => p.hn === patientHN);
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            
+            if (!patient || !treatment) {
+                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
+            doc.setFont('Sarabun');
+
+            doc.setFontSize(12);
+
+            // หัวกระดาษ
+            doc.text('เฮ้าส์ ออฟ เฮิร์บ เวลเนสสหคลินิก', 20, 20);
+            doc.text('162 ถนนสวนสมเด็จ ต.หน้าเมือง อ.เมือง จ.ฉะเชิงเทรา', 20, 30);
+
+            doc.setFontSize(18);
+            doc.text('ใบรับรองแพทย์ / Medical Certificate', 20, 50);
+
+            doc.setFontSize(14);
+            doc.text(`เลขที่: ${treatment.patientHN}-${treatment.date}`, 20, 40);
+            doc.text(`แพทย์: ดร. สมศักดิ์ รักษาดี`, 20, 50);
+            doc.text(`ผู้ป่วย: ${patient.name}`, 20, 60);
+            doc.text(`วันที่ตรวจ: ${treatment.date}`, 20, 70);
+            doc.text(`วินิจฉัย: ${treatment.diagnosis}`, 20, 80);
+            doc.text(`ระยะเวลารักษา: ${treatment.date} ถึง ${treatment.nextAppointment}`, 20, 90);
+            
+            const startDate = new Date(treatment.date);
+            const endDate = new Date(treatment.nextAppointment);
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            doc.text(`จำนวนวัน: ${diffDays} วัน`, 20, 100);
+
+            doc.text('ลงชื่อ..................................', 20, 180);
+            doc.text('(ดร. สมศักดิ์ รักษาดี)', 20, 190);
+            doc.text('แพทย์ผู้ตรวจ', 20, 200);
+
+            // เปิด PDF ในแท็บใหม่
+            window.open(doc.output('bloburl'), '_blank');
+        }
+
+        function saveMedicalCertificatePDF(patientHN, treatmentDate) {
+            const patient = patients.find(p => p.hn === patientHN);
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            
+            if (!patient || !treatment) {
+                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
+            doc.setFont('Sarabun');
+
+            // หัวกระดาษ
+            doc.text('เฮ้าส์ ออฟ เฮิร์บ เวลเนสสหคลินิก', 20, 20);
+            doc.text('162 ถนนสวนสมเด็จ ต.หน้าเมือง อ.เมือง จ.ฉะเชิงเทรา', 20, 30);
+
+            doc.setFontSize(18);
+            doc.text('ใบรับรองแพทย์ / Medical Certificate', 20, 50);
+
+            doc.setFontSize(14);
+            doc.text(`เลขที่: ${treatment.patientHN}-${treatment.date}`, 20, 40);
+            doc.text(`แพทย์: ดร. สมศักดิ์ รักษาดี`, 20, 50);
+            doc.text(`ผู้ป่วย: ${patient.name}`, 20, 60);
+            doc.text(`วันที่ตรวจ: ${treatment.date}`, 20, 70);
+            doc.text(`วินิจฉัย: ${treatment.diagnosis}`, 20, 80);
+            doc.text(`ระยะเวลารักษา: ${treatment.date} ถึง ${treatment.nextAppointment}`, 20, 90);
+            
+            const startDate = new Date(treatment.date);
+            const endDate = new Date(treatment.nextAppointment);
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            doc.text(`จำนวนวัน: ${diffDays} วัน`, 20, 100);
+
+            doc.text('ลงชื่อ..................................', 20, 180);
+            doc.text('(ดร. สมศักดิ์ รักษาดี)', 20, 190);
+            doc.text('แพทย์ผู้ตรวจ', 20, 200);
+
+            // บันทึกไฟล์ PDF
+            doc.save('medical_certificate_' + patient.name + '_' + treatment.date + '.pdf');
+        }
+
+        // เพิ่ม event listener สำหรับปิด modal เมื่อคลิกนอกกรอบ
+        window.onclick = function(event) {
+            const modal = document.getElementById('treatmentDetailModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
