@@ -8,7 +8,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-
     <style>
         body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
         .container { max-width: 1200px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -36,95 +35,8 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ระบบบันทึกประวัติผู้ป่วยและการรักษา</h1>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('patientTab')">ข้อมูลผู้ป่วย</button>
-            <button class="tab" id="treatmentTab" onclick="showTab('treatmentTabContent')">บันทึกการรักษา</button>
-        </div>
-        
-        <div id="patientTab" class="tab-content active">
-            <h2>บันทึกข้อมูลผู้ป่วย</h2>
-            <form id="patientForm">
-                <input type="text" id="hn" placeholder="HN (สร้างอัตโนมัติ)" readonly>
-                <input type="text" id="name" placeholder="ชื่อ-นามสกุล" required>
-                <input type="date" id="birthdate" required>
-                <input type="text" id="occupation" placeholder="อาชีพ">
-                <textarea id="address" placeholder="ที่อยู่"></textarea>
-                <input type="tel" id="phone" placeholder="เบอร์โทรศัพท์">
-                <textarea id="underlyingDisease" placeholder="โรคประจำตัว"></textarea>
-                <textarea id="allergies" placeholder="ประวัติการแพ้ยา"></textarea>
-                <button type="submit">บันทึกข้อมูล</button>
-            </form>
-            
-            <h2>รายชื่อผู้ป่วย</h2>
-            <input type="text" id="patientSearch" placeholder="ค้นหาผู้ป่วย (ชื่อหรือ HN)">
-            <table id="patientList">
-                <thead>
-                    <tr>
-                        <th>HN</th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th>วันเกิด</th>
-                        <th>เบอร์โทรศัพท์</th>
-                        <th>การดำเนินการ</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        
-        <div id="treatmentTabContent" class="tab-content">
-            <h2>บันทึกการรักษา</h2>
-            <input type="text" id="treatmentPatientSearch" placeholder="ค้นหาผู้ป่วย (ชื่อหรือ HN)">
-            <div id="selectedPatientInfo" class="patient-info-box"></div>
-            <form id="treatmentForm">
-                <input type="date" id="treatmentDate" required>
-                <fieldset>
-                    <legend>Vital Signs</legend>
-                    <input type="text" id="bloodPressure" placeholder="ความดันโลหิต">
-                    <input type="number" id="pulse" placeholder="ชีพจร">
-                    <input type="number" id="temperature" placeholder="อุณหภูมิ">
-                    <input type="number" id="respiratoryRate" placeholder="อัตราการหายใจ">
-                </fieldset>
-                <textarea id="symptoms" placeholder="อาการ"></textarea>
-                <textarea id="diagnosis" placeholder="การวินิจฉัย"></textarea>
-                <textarea id="treatment" placeholder="การรักษา"></textarea>
-                <textarea id="medication" placeholder="ยาที่ได้รับ"></textarea>
-                <input type="date" id="nextAppointment" placeholder="วันนัดครั้งต่อไป">
-                <div id="bodyChartContainer">
-                    <img id="bodyChartImage" src="/api/placeholder/300/400" alt="Body Chart">
-                    <canvas id="bodyChart" width="600" height="800"></canvas>
-                </div>
-                <input type="file" id="imageUpload" accept="image/*">
-                <label for="imageUpload" id="uploadLabel">อัพโหลดรูปภาพ</label>
-                <button type="button" onclick="clearBodyChart()">ล้างรูปวาด</button>
-                <button type="submit">บันทึกการรักษา</button>
-            </form>
-            
-            <h2>ประวัติการรักษา</h2>
-            <table id="treatmentHistory">
-                <thead>
-                    <tr>
-                        <th>วันที่</th>
-                        <th>อาการ</th>
-                        <th>การวินิจฉัย</th>
-                        <th>การรักษา</th>
-                        <th>การดำเนินการ</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="treatmentDetailModal" style="display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-        <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px;">
-            <span style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;" onclick="closeTreatmentDetailModal()">&times;</span>
-            <div id="treatmentDetailContent"></div>
-        </div>
-    </div>
-     
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
     <script>
         let patients = JSON.parse(localStorage.getItem('patients')) || [];
         let treatments = JSON.parse(localStorage.getItem('treatments')) || [];
@@ -250,6 +162,7 @@
             loadTreatmentHistory();
             e.target.reset();
             clearBodyChart();
+            alert('บันทึกการรักษาเรียบร้อยแล้ว');
         }
 
         function generateHN() {

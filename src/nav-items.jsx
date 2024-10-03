@@ -1,14 +1,18 @@
-import { HomeIcon } from "lucide-react";
+import { HomeIcon, FileTextIcon, ReceiptIcon } from "lucide-react";
 import Index from "./pages/Index.jsx";
+import ReceiptTab from "./components/ReceiptTab.jsx";
 
-/**
- * Central place for defining the navigation items. Used for navigation components and routing.
- */
 export const navItems = [
   {
-    title: "Home",
+    title: "หน้าหลัก",
     to: "/",
     icon: <HomeIcon className="h-4 w-4" />,
     page: <Index />,
+  },
+  {
+    title: "ใบเสร็จรับเงิน",
+    to: "/receipt",
+    icon: <ReceiptIcon className="h-4 w-4" />,
+    page: <ReceiptTab />,
   },
 ];
