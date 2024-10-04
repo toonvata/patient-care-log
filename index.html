@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบบันทึกประวัติผู้ป่วยและการรักษา</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -25,9 +24,6 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .patient-info-box { border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; }
-        #bodyChartContainer { position: relative; width: 600px; height: 800px; margin: 0 auto; }
-        #bodyChartImage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
-        #bodyChart { position: absolute; top: 0; left: 0; }
         #imageUpload { display: none; }
         #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
         #uploadLabel:hover { background-color: #45a049; }
@@ -91,11 +87,6 @@
                 <textarea id="treatment" placeholder="การรักษา"></textarea>
                 <textarea id="medication" placeholder="ยาที่ได้รับ"></textarea>
                 <input type="date" id="nextAppointment" placeholder="วันนัดครั้งต่อไป">
-                <div id="bodyChartContainer">
-                    <img id="bodyChartImage" src="/api/placeholder/300/400" alt="Body Chart">
-                    <canvas id="bodyChart" width="600" height="800"></canvas>
-                </div>
-                <button type="button" onclick="clearBodyChart()">ล้างรูปวาด</button>
                 <button type="submit">บันทึกการรักษา</button>
             </form>
             
@@ -135,10 +126,8 @@
         let patients = JSON.parse(localStorage.getItem('patients')) || [];
         let treatments = JSON.parse(localStorage.getItem('treatments')) || [];
         let selectedPatient = null;
-        let canvas;
 
         document.addEventListener('DOMContentLoaded', function() {
-            initializeBodyChart();
             loadPatients();
             document.getElementById('patientForm').addEventListener('submit', addPatient);
             document.getElementById('treatmentForm').addEventListener('submit', addTreatment);
@@ -168,14 +157,12 @@
                 treatment: document.getElementById('treatment').value,
                 medication: document.getElementById('medication').value,
                 nextAppointment: document.getElementById('nextAppointment').value,
-                bodyChart: canvas.toDataURL(),
                 uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
             };
             treatments.push(treatment);
             saveTreatments();
             loadTreatmentHistory();
             e.target.reset();
-            clearBodyChart();
             document.getElementById('uploadedImageContainer').innerHTML = '';
             alert('บันทึกการรักษาเรียบร้อยแล้ว');
         }
@@ -253,45 +240,6 @@
             doc.save('receipt.pdf');
         }
 
-        function initializeBodyChart() {
-            canvas = new fabric.Canvas('bodyChart', {
-                isDrawingMode: true,
-                width: 600,
-                height: 800
-            });
-
-            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
-                img.scaleToWidth(canvas.width);
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-                canvas.freeDrawingBrush.width = 2;
-                canvas.freeDrawingBrush.color = "#0d0000";
-            });
-
-            canvas.on('path:created', function() {
-                saveCanvasState();
-            });
-        }
-
-        function saveCanvasState() {
-            localStorage.setItem('bodyChartState', JSON.stringify(canvas.toJSON()));
-        }
-
-        function loadCanvasState() {
-            const savedState = localStorage.getItem('bodyChartState');
-            if (savedState) {
-                canvas.loadFromJSON(savedState, canvas.renderAll.bind(canvas));
-            }
-        }
-
-        function clearBodyChart() {
-            canvas.clear();
-            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
-                img.scaleToWidth(canvas.width);
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-            });
-            saveCanvasState();
-        }
-
         function handleImageUpload(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
@@ -307,38 +255,6 @@
             };
 
             reader.readAsDataURL(file);
-        }
-
-        function addTreatment(e) {
-            e.preventDefault();
-            if (!selectedPatient) {
-                alert('กรุณาเลือกผู้ป่วยก่อนบันทึกการรักษา');
-                return;
-            }
-            const treatment = {
-                patientHN: selectedPatient.hn,
-                date: document.getElementById('treatmentDate').value,
-                vitalSigns: {
-                    bloodPressure: document.getElementById('bloodPressure').value,
-                    pulse: document.getElementById('pulse').value,
-                    temperature: document.getElementById('temperature').value,
-                    respiratoryRate: document.getElementById('respiratoryRate').value
-                },
-                symptoms: document.getElementById('symptoms').value,
-                diagnosis: document.getElementById('diagnosis').value,
-                treatment: document.getElementById('treatment').value,
-                medication: document.getElementById('medication').value,
-                nextAppointment: document.getElementById('nextAppointment').value,
-                bodyChart: canvas.toDataURL(),
-                uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
-            };
-            treatments.push(treatment);
-            saveTreatments();
-            loadTreatmentHistory();
-            e.target.reset();
-            clearBodyChart();
-            document.getElementById('uploadedImageContainer').innerHTML = '';
-            alert('บันทึกการรักษาเรียบร้อยแล้ว');
         }
 
         function addPatient(e) {
@@ -402,19 +318,6 @@
                 <p><strong>ประวัติการแพ้ยา:</strong> ${patient.allergies}</p>
             `;
             loadTreatmentHistory();
-            
-            const latestTreatment = treatments
-                .filter(t => t.patientHN === patient.hn)
-                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-            
-            if (latestTreatment && latestTreatment.bodyChart) {
-                fabric.Image.fromURL(latestTreatment.bodyChart, function(img) {
-                    canvas.clear();
-                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-                });
-            } else {
-                clearBodyChart();
-            }
         }
 
         function loadTreatmentHistory() {
@@ -502,10 +405,6 @@
             const tabButtons = document.querySelectorAll('.tab');
             tabButtons.forEach(button => button.classList.remove('active'));
             document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
-
-            if (tabId === 'treatmentTabContent' && canvas) {
-                canvas.renderAll();
-            }
         }
 
         function showTreatmentDetail(patientHN, treatmentDate) {
@@ -526,8 +425,6 @@
                     <p><strong>การรักษา:</strong> ${treatment.treatment}</p>
                     <p><strong>ยาที่ได้รับ:</strong> ${treatment.medication}</p>
                     <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
-                    <h4>Body Chart:</h4>
-                    <img src="${treatment.bodyChart}" alt="Body Chart" style="max-width: 100%; height: auto;">
                     ${treatment.uploadedImage ? `<h4>รูปภาพที่อัปโหลด:</h4><img src="${treatment.uploadedImage}" alt="Uploaded Image" style="max-width: 100%; height: auto;">` : ''}
                 `;
                 document.getElementById('treatmentDetailContent').innerHTML = detailContent;
@@ -572,8 +469,7 @@
                         diagnosis: "ความเครียด", 
                         treatment: "พักผ่อน", 
                         medication: "พาราเซตามอล", 
-                        nextAppointment: "2024-03-15",
-                        bodyChart: "" // ไม่มีรูปวาดสำหรับข้อมูลตัวอย่าง
+                        nextAppointment: "2024-03-15"
                     },
                     { 
                         patientHN: patients[1].hn, 
@@ -583,8 +479,7 @@
                         diagnosis: "ไข้หวัด", 
                         treatment: "พักผ่อน ดื่มน้ำมากๆ", 
                         medication: "ยาแก้ไอ ยาลดไข้", 
-                        nextAppointment: "2024-03-09",
-                        bodyChart: "" // ไม่มีรูปวาดสำหรับข้อมูลตัวอย่าง
+                        nextAppointment: "2024-03-09"
                     }
                 ];
 
