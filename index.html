@@ -34,6 +34,7 @@
         #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
         #uploadLabel:hover { background-color: #45a049; }
     </style>
+    </style>
 </head>
 <body>
     <div class="container">
@@ -98,7 +99,6 @@
                     <canvas id="bodyChart" width="600" height="800"></canvas>
                 </div>
                 <button type="button" onclick="clearBodyChart()">ล้างรูปวาด</button>
-                <button type="submit">บันทึกการรักษา</button>
             </form>
             
             <h2>อัปโหลดรูปภาพ</h2>
@@ -119,6 +119,8 @@
                 </thead>
                 <tbody></tbody>
             </table>
+
+            <button type="button" onclick="addTreatment()">บันทึกการรักษา</button>
         </div>
 
         <div id="receiptTab" class="tab-content">
@@ -143,7 +145,6 @@
             initializeBodyChart();
             loadPatients();
             document.getElementById('patientForm').addEventListener('submit', addPatient);
-            document.getElementById('treatmentForm').addEventListener('submit', addTreatment);
             document.getElementById('patientSearch').addEventListener('input', searchPatients);
             document.getElementById('treatmentPatientSearch').addEventListener('input', searchPatientsForTreatment);
             document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
@@ -592,7 +593,61 @@
             doc.save('medical_certificate_' + patient.name + '_' + treatment.date + '.pdf');
         }
 
-        // เพิ่ม event listener สำหรับปิด modal เมื่อคลิกนอกกรอบ
+        function addTreatment() {
+            if (!selectedPatient) {
+                alert('กรุณาเลือกผู้ป่วยก่อนบันทึกการรักษา');
+                return;
+            }
+            const treatment = {
+                patientHN: selectedPatient.hn,
+                date: document.getElementById('treatmentDate').value,
+                vitalSigns: {
+                    bloodPressure: document.getElementById('bloodPressure').value,
+                    pulse: document.getElementById('pulse').value,
+                    temperature: document.getElementById('temperature').value,
+                    respiratoryRate: document.getElementById('respiratoryRate').value
+                },
+                symptoms: document.getElementById('symptoms').value,
+                diagnosis: document.getElementById('diagnosis').value,
+                treatment: document.getElementById('treatment').value,
+                medication: document.getElementById('medication').value,
+                nextAppointment: document.getElementById('nextAppointment').value,
+                bodyChart: canvas.toDataURL(),
+                uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
+            };
+            treatments.push(treatment);
+            saveTreatments();
+            loadTreatmentHistory();
+            document.getElementById('treatmentForm').reset();
+            clearBodyChart();
+            document.getElementById('uploadedImageContainer').innerHTML = '';
+            alert('บันทึกการรักษาเรียบร้อยแล้ว');
+        }
+
+        function loadTreatmentHistory() {
+            if (!selectedPatient) return;
+            const tbody = document.querySelector('#treatmentHistory tbody');
+            tbody.innerHTML = '';
+            treatments
+                .filter(t => t.patientHN === selectedPatient.hn)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .forEach(treatment => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = treatment.date;
+                    row.insertCell(1).textContent = treatment.symptoms;
+                    row.insertCell(2).textContent = treatment.diagnosis;
+                    row.insertCell(3).textContent = treatment.treatment;
+                    const actionsCell = row.insertCell(4);
+                    actionsCell.innerHTML = `
+                        <button onclick="showTreatmentDetail('${treatment.patientHN}', '${treatment.date}')">รายละเอียด</button>
+                        <button onclick="deleteTreatment('${treatment.patientHN}', '${treatment.date}')">ลบ</button>
+                        <button onclick="printMedicalCertificate('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบรับรองแพทย์</button>
+                        <button onclick="saveMedicalCertificatePDF('${treatment.patientHN}', '${treatment.date}')">บันทึก PDF</button>
+                        <button onclick="printReceipt('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบเสร็จ</button>
+                    `;
+                });
+        }
+
         window.onclick = function(event) {
             const modal = document.getElementById('treatmentDetailModal');
             if (event.target == modal) {
