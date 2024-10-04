@@ -7,8 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-
     <style>
         body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
         .container { max-width: 1200px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -391,6 +389,20 @@
             }
         }
 
+        function showTab(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach(button => button.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+
+            if (tabId === 'treatmentTabContent' && canvas) {
+                canvas.renderAll();
+            }
+        }
+
         function showTreatmentDetail(patientHN, treatmentDate) {
             const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
             if (treatment) {
@@ -477,96 +489,6 @@
 
                 saveTreatments();
             }
-        }
-
-        function printMedicalCertificate(patientHN, treatmentDate) {
-            const patient = patients.find(p => p.hn === patientHN);
-            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
-            
-            if (!patient || !treatment) {
-                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
-            doc.setFont('Sarabun');
-
-            doc.setFontSize(12);
-
-            // หัวกระดาษ
-            doc.text('เฮ้าส์ ออฟ เฮิร์บ เวลเนสสหคลินิก', 20, 20);
-            doc.text('162 ถนนสวนสมเด็จ ต.หน้าเมือง อ.เมือง จ.ฉะเชิงเทรา', 20, 30);
-
-            doc.setFontSize(18);
-            doc.text('ใบรับรองแพทย์ / Medical Certificate', 20, 50);
-
-            doc.setFontSize(14);
-            doc.text(`เลขที่: ${treatment.patientHN}-${treatment.date}`, 20, 40);
-            doc.text(`แพทย์: ดร. สมศักดิ์ รักษาดี`, 20, 50);
-            doc.text(`ผู้ป่วย: ${patient.name}`, 20, 60);
-            doc.text(`วันที่ตรวจ: ${treatment.date}`, 20, 70);
-            doc.text(`วินิจฉัย: ${treatment.diagnosis}`, 20, 80);
-            doc.text(`ระยะเวลารักษา: ${treatment.date} ถึง ${treatment.nextAppointment}`, 20, 90);
-            
-            const startDate = new Date(treatment.date);
-            const endDate = new Date(treatment.nextAppointment);
-            const diffTime = Math.abs(endDate - startDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            doc.text(`จำนวนวัน: ${diffDays} วัน`, 20, 100);
-
-            doc.text('ลงชื่อ..................................', 20, 180);
-            doc.text('(ดร. สมศักดิ์ รักษาดี)', 20, 190);
-            doc.text('แพทย์ผู้ตรวจ', 20, 200);
-
-            // เปิด PDF ในแท็บใหม่
-            window.open(doc.output('bloburl'), '_blank');
-        }
-
-        function saveMedicalCertificatePDF(patientHN, treatmentDate) {
-            const patient = patients.find(p => p.hn === patientHN);
-            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
-            
-            if (!patient || !treatment) {
-                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.addFont('https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YOZqik8s6zDX.woff2', 'Sarabun', 'normal');
-            doc.setFont('Sarabun');
-
-            // หัวกระดาษ
-            doc.text('เฮ้าส์ ออฟ เฮิร์บ เวลเนสสหคลินิก', 20, 20);
-            doc.text('162 ถนนสวนสมเด็จ ต.หน้าเมือง อ.เมือง จ.ฉะเชิงเทรา', 20, 30);
-
-            doc.setFontSize(18);
-            doc.text('ใบรับรองแพทย์ / Medical Certificate', 20, 50);
-
-            doc.setFontSize(14);
-            doc.text(`เลขที่: ${treatment.patientHN}-${treatment.date}`, 20, 40);
-            doc.text(`แพทย์: ดร. สมศักดิ์ รักษาดี`, 20, 50);
-            doc.text(`ผู้ป่วย: ${patient.name}`, 20, 60);
-            doc.text(`วันที่ตรวจ: ${treatment.date}`, 20, 70);
-            doc.text(`วินิจฉัย: ${treatment.diagnosis}`, 20, 80);
-            doc.text(`ระยะเวลารักษา: ${treatment.date} ถึง ${treatment.nextAppointment}`, 20, 90);
-            
-            const startDate = new Date(treatment.date);
-            const endDate = new Date(treatment.nextAppointment);
-            const diffTime = Math.abs(endDate - startDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            doc.text(`จำนวนวัน: ${diffDays} วัน`, 20, 100);
-
-            doc.text('ลงชื่อ..................................', 20, 180);
-            doc.text('(ดร. สมศักดิ์ รักษาดี)', 20, 190);
-            doc.text('แพทย์ผู้ตรวจ', 20, 200);
-
-            // บันทึกไฟล์ PDF
-            doc.save('medical_certificate_' + patient.name + '_' + treatment.date + '.pdf');
         }
 
         // เพิ่ม event listener สำหรับปิด modal เมื่อคลิกนอกกรอบ
