@@ -148,6 +148,111 @@
             addSampleData();
         });
 
+        function addTreatment(e) {
+            e.preventDefault();
+            if (!selectedPatient) {
+                alert('กรุณาเลือกผู้ป่วยก่อนบันทึกการรักษา');
+                return;
+            }
+            const treatment = {
+                patientHN: selectedPatient.hn,
+                date: document.getElementById('treatmentDate').value,
+                vitalSigns: {
+                    bloodPressure: document.getElementById('bloodPressure').value,
+                    pulse: document.getElementById('pulse').value,
+                    temperature: document.getElementById('temperature').value,
+                    respiratoryRate: document.getElementById('respiratoryRate').value
+                },
+                symptoms: document.getElementById('symptoms').value,
+                diagnosis: document.getElementById('diagnosis').value,
+                treatment: document.getElementById('treatment').value,
+                medication: document.getElementById('medication').value,
+                nextAppointment: document.getElementById('nextAppointment').value,
+                bodyChart: canvas.toDataURL(),
+                uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
+            };
+            treatments.push(treatment);
+            saveTreatments();
+            loadTreatmentHistory();
+            e.target.reset();
+            clearBodyChart();
+            document.getElementById('uploadedImageContainer').innerHTML = '';
+            alert('บันทึกการรักษาเรียบร้อยแล้ว');
+        }
+
+        function printMedicalCertificate(patientHN, treatmentDate) {
+            const patient = patients.find(p => p.hn === patientHN);
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (!patient || !treatment) {
+                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
+                return;
+            }
+
+            const doc = new jspdf.jsPDF();
+            doc.setFont('Sarabun-Regular');
+            doc.setFontSize(16);
+            doc.text('ใบรับรองแพทย์', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`ชื่อ-นามสกุล: ${patient.name}`, 20, 40);
+            doc.text(`HN: ${patient.hn}`, 20, 50);
+            doc.text(`วันที่รับการรักษา: ${treatment.date}`, 20, 60);
+            doc.text(`อาการ: ${treatment.symptoms}`, 20, 70);
+            doc.text(`การวินิจฉัย: ${treatment.diagnosis}`, 20, 80);
+            doc.text(`การรักษา: ${treatment.treatment}`, 20, 90);
+            doc.text(`ยาที่ได้รับ: ${treatment.medication}`, 20, 100);
+            doc.text(`แพทย์ผู้รักษา: ดร. สมศักดิ์ รักษาดี`, 20, 120);
+            doc.save('medical_certificate.pdf');
+        }
+
+        function saveMedicalCertificatePDF(patientHN, treatmentDate) {
+            const patient = patients.find(p => p.hn === patientHN);
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (!patient || !treatment) {
+                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
+                return;
+            }
+
+            const doc = new jspdf.jsPDF();
+            doc.setFont('Sarabun-Regular');
+            doc.setFontSize(16);
+            doc.text('ใบรับรองแพทย์', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`ชื่อ-นามสกุล: ${patient.name}`, 20, 40);
+            doc.text(`HN: ${patient.hn}`, 20, 50);
+            doc.text(`วันที่รับการรักษา: ${treatment.date}`, 20, 60);
+            doc.text(`อาการ: ${treatment.symptoms}`, 20, 70);
+            doc.text(`การวินิจฉัย: ${treatment.diagnosis}`, 20, 80);
+            doc.text(`การรักษา: ${treatment.treatment}`, 20, 90);
+            doc.text(`ยาที่ได้รับ: ${treatment.medication}`, 20, 100);
+            doc.text(`แพทย์ผู้รักษา: ดร. สมศักดิ์ รักษาดี`, 20, 120);
+            doc.save('medical_certificate.pdf');
+        }
+
+        function printReceipt(patientHN, treatmentDate) {
+            const patient = patients.find(p => p.hn === patientHN);
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (!patient || !treatment) {
+                alert('ไม่พบข้อมูลผู้ป่วยหรือการรักษา');
+                return;
+            }
+
+            const doc = new jspdf.jsPDF();
+            doc.setFont('Sarabun-Regular');
+            doc.setFontSize(16);
+            doc.text('ใบเสร็จรับเงิน', 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`ชื่อ-นามสกุล: ${patient.name}`, 20, 40);
+            doc.text(`HN: ${patient.hn}`, 20, 50);
+            doc.text(`วันที่รับการรักษา: ${treatment.date}`, 20, 60);
+            doc.text(`รายการรักษา: ${treatment.treatment}`, 20, 70);
+            doc.text(`ยาที่ได้รับ: ${treatment.medication}`, 20, 80);
+            doc.text(`จำนวนเงิน: 500 บาท`, 20, 90);
+            doc.text(`ลงชื่อ..................................`, 130, 120);
+            doc.text(`(ดร. สมศักดิ์ รักษาดี)`, 135, 130);
+            doc.text(`แพทย์ผู้รักษา`, 145, 140);
+            doc.save('receipt.pdf');
+        }
+
         function initializeBodyChart() {
             canvas = new fabric.Canvas('bodyChart', {
                 isDrawingMode: true,
@@ -498,6 +603,7 @@
                 modal.style.display = 'none';
             }
         }
+
     </script>
 </body>
 </html>
