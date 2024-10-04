@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบบันทึกประวัติผู้ป่วยและการรักษา</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
@@ -27,6 +28,7 @@
         #imageUpload { display: none; }
         #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
         #uploadLabel:hover { background-color: #45a049; }
+        #bodyChart { border: 1px solid #ddd; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -87,13 +89,12 @@
                 <textarea id="treatment" placeholder="การรักษา"></textarea>
                 <textarea id="medication" placeholder="ยาที่ได้รับ"></textarea>
                 <input type="date" id="nextAppointment" placeholder="วันนัดครั้งต่อไป">
+                <div>
+                    <canvas id="bodyChart" width="600" height="800"></canvas>
+                    <button type="button" onclick="clearCanvas()">ล้างรูปวาด</button>
+                </div>
                 <button type="submit">บันทึกการรักษา</button>
             </form>
-            
-            <h2>อัปโหลดรูปภาพ</h2>
-            <input type="file" id="imageUpload" accept="image/*">
-            <label for="imageUpload" id="uploadLabel">อัพโหลดรูปภาพ</label>
-            <div id="uploadedImageContainer"></div>
             
             <h2>ประวัติการรักษา</h2>
             <table id="treatmentHistory">
@@ -126,6 +127,7 @@
         let patients = JSON.parse(localStorage.getItem('patients')) || [];
         let treatments = JSON.parse(localStorage.getItem('treatments')) || [];
         let selectedPatient = null;
+        let canvas;
 
         document.addEventListener('DOMContentLoaded', function() {
             loadPatients();
@@ -133,9 +135,20 @@
             document.getElementById('treatmentForm').addEventListener('submit', addTreatment);
             document.getElementById('patientSearch').addEventListener('input', searchPatients);
             document.getElementById('treatmentPatientSearch').addEventListener('input', searchPatientsForTreatment);
-            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+            initCanvas();
             addSampleData();
         });
+
+        function initCanvas() {
+            canvas = new fabric.Canvas('bodyChart');
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.width = 2;
+            canvas.freeDrawingBrush.color = "#000000";
+        }
+
+        function clearCanvas() {
+            canvas.clear();
+        }
 
         function addTreatment(e) {
             e.preventDefault();
@@ -157,13 +170,13 @@
                 treatment: document.getElementById('treatment').value,
                 medication: document.getElementById('medication').value,
                 nextAppointment: document.getElementById('nextAppointment').value,
-                uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
+                bodyChartImage: canvas.toDataURL()
             };
             treatments.push(treatment);
             saveTreatments();
             loadTreatmentHistory();
             e.target.reset();
-            document.getElementById('uploadedImageContainer').innerHTML = '';
+            clearCanvas();
             alert('บันทึกการรักษาเรียบร้อยแล้ว');
         }
 
