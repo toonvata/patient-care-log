@@ -150,34 +150,11 @@
             addSampleData();
         });
 
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
-
-            if (tabId === 'receiptTab') {
-                renderReceiptTab();
-            }
-        }
-
-        function renderReceiptTab() {
-            const receiptTab = document.getElementById('receiptTab');
-            if (!receiptTab.hasChildNodes()) {
-                const receiptComponent = document.createElement('div');
-                receiptComponent.id = 'receiptComponent';
-                receiptTab.appendChild(receiptComponent);
-                
-                // Render the React component
-                ReactDOM.render(React.createElement(ReceiptTab), receiptComponent);
-            }
-        }
-
         function initializeBodyChart() {
             canvas = new fabric.Canvas('bodyChart', {
+                isDrawingMode: true,
                 width: 600,
-                height: 800,
-                isDrawingMode: true
+                height: 800
             });
 
             fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
@@ -190,23 +167,6 @@
             canvas.on('path:created', function() {
                 saveCanvasState();
             });
-        }
-
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(event) {
-                const img = document.createElement('img');
-                img.src = event.target.result;
-                img.style.maxWidth = '100%';
-                img.style.height = 'auto';
-                const container = document.getElementById('uploadedImageContainer');
-                container.innerHTML = '';
-                container.appendChild(img);
-            };
-
-            reader.readAsDataURL(file);
         }
 
         function saveCanvasState() {
@@ -229,22 +189,21 @@
             saveCanvasState();
         }
 
-        function addPatient(e) {
-            e.preventDefault();
-            const patient = {
-                hn: generateHN(),
-                name: document.getElementById('name').value,
-                birthdate: document.getElementById('birthdate').value,
-                occupation: document.getElementById('occupation').value,
-                address: document.getElementById('address').value,
-                phone: document.getElementById('phone').value,
-                underlyingDisease: document.getElementById('underlyingDisease').value,
-                allergies: document.getElementById('allergies').value
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                const container = document.getElementById('uploadedImageContainer');
+                container.innerHTML = '';
+                container.appendChild(img);
             };
-            patients.push(patient);
-            savePatients();
-            loadPatients();
-            e.target.reset();
+
+            reader.readAsDataURL(file);
         }
 
         function addTreatment(e) {
@@ -277,6 +236,24 @@
             clearBodyChart();
             document.getElementById('uploadedImageContainer').innerHTML = '';
             alert('บันทึกการรักษาเรียบร้อยแล้ว');
+        }
+
+        function addPatient(e) {
+            e.preventDefault();
+            const patient = {
+                hn: generateHN(),
+                name: document.getElementById('name').value,
+                birthdate: document.getElementById('birthdate').value,
+                occupation: document.getElementById('occupation').value,
+                address: document.getElementById('address').value,
+                phone: document.getElementById('phone').value,
+                underlyingDisease: document.getElementById('underlyingDisease').value,
+                allergies: document.getElementById('allergies').value
+            };
+            patients.push(patient);
+            savePatients();
+            loadPatients();
+            e.target.reset();
         }
 
         function generateHN() {
