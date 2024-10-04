@@ -97,11 +97,14 @@
                     <img id="bodyChartImage" src="/api/placeholder/300/400" alt="Body Chart">
                     <canvas id="bodyChart" width="600" height="800"></canvas>
                 </div>
-                <input type="file" id="imageUpload" accept="image/*">
-                <label for="imageUpload" id="uploadLabel">อัพโหลดรูปภาพ</label>
                 <button type="button" onclick="clearBodyChart()">ล้างรูปวาด</button>
                 <button type="submit">บันทึกการรักษา</button>
             </form>
+            
+            <h2>อัปโหลดรูปภาพ</h2>
+            <input type="file" id="imageUpload" accept="image/*">
+            <label for="imageUpload" id="uploadLabel">อัพโหลดรูปภาพ</label>
+            <div id="uploadedImageContainer"></div>
             
             <h2>ประวัติการรักษา</h2>
             <table id="treatmentHistory">
@@ -143,8 +146,8 @@
             document.getElementById('treatmentForm').addEventListener('submit', addTreatment);
             document.getElementById('patientSearch').addEventListener('input', searchPatients);
             document.getElementById('treatmentPatientSearch').addEventListener('input', searchPatientsForTreatment);
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
             addSampleData();
-            loadCanvasState();
         });
 
         function showTab(tabId) {
@@ -173,13 +176,13 @@
         function initializeBodyChart() {
             canvas = new fabric.Canvas('bodyChart', {
                 width: 600,
-                height: 800
+                height: 800,
+                isDrawingMode: true
             });
 
             fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
                 img.scaleToWidth(canvas.width);
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-                canvas.isDrawingMode = true;
                 canvas.freeDrawingBrush.width = 2;
                 canvas.freeDrawingBrush.color = "#0d0000";
             });
@@ -187,8 +190,6 @@
             canvas.on('path:created', function() {
                 saveCanvasState();
             });
-
-            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
         }
 
         function handleImageUpload(e) {
@@ -196,12 +197,13 @@
             const reader = new FileReader();
 
             reader.onload = function(event) {
-                fabric.Image.fromURL(event.target.result, function(img) {
-                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                        scaleX: canvas.width / img.width,
-                        scaleY: canvas.height / img.height
-                    });
-                });
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                const container = document.getElementById('uploadedImageContainer');
+                container.innerHTML = '';
+                container.appendChild(img);
             };
 
             reader.readAsDataURL(file);
@@ -224,6 +226,7 @@
                 img.scaleToWidth(canvas.width);
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
             });
+            saveCanvasState();
         }
 
         function addPatient(e) {
@@ -264,13 +267,15 @@
                 treatment: document.getElementById('treatment').value,
                 medication: document.getElementById('medication').value,
                 nextAppointment: document.getElementById('nextAppointment').value,
-                bodyChart: canvas.toDataURL()
+                bodyChart: canvas.toDataURL(),
+                uploadedImage: document.querySelector('#uploadedImageContainer img')?.src || null
             };
             treatments.push(treatment);
             saveTreatments();
             loadTreatmentHistory();
             e.target.reset();
             clearBodyChart();
+            document.getElementById('uploadedImageContainer').innerHTML = '';
             alert('บันทึกการรักษาเรียบร้อยแล้ว');
         }
 
@@ -323,7 +328,10 @@
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
             
             if (latestTreatment && latestTreatment.bodyChart) {
-                updateBodyChart(latestTreatment.bodyChart);
+                fabric.Image.fromURL(latestTreatment.bodyChart, function(img) {
+                    canvas.clear();
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                });
             } else {
                 clearBodyChart();
             }
@@ -426,6 +434,7 @@
                     <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
                     <h4>Body Chart:</h4>
                     <img src="${treatment.bodyChart}" alt="Body Chart" style="max-width: 100%; height: auto;">
+                    ${treatment.uploadedImage ? `<h4>รูปภาพที่อัปโหลด:</h4><img src="${treatment.uploadedImage}" alt="Uploaded Image" style="max-width: 100%; height: auto;">` : ''}
                 `;
                 document.getElementById('treatmentDetailContent').innerHTML = detailContent;
                 document.getElementById('treatmentDetailModal').style.display = 'block';
