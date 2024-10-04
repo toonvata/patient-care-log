@@ -7,29 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
-        .container { max-width: 1200px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; }
-        .tabs { display: flex; margin-bottom: 20px; }
-        .tab { padding: 10px 20px; cursor: pointer; border: none; background-color: #ddd; font-size: 16px; }
-        .tab.active { background-color: #fff; }
-        .tab-content { display: none; padding: 20px; background-color: #fff; }
-        .tab-content.active { display: block; }
-        #treatmentTab { background-color: #1a237e; color: #fff; }
-        form { display: grid; gap: 10px; }
-        input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .patient-info-box { border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; }
-        #imageUpload { display: none; }
-        #uploadLabel { display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
-        #uploadLabel:hover { background-color: #45a049; }
-        #bodyChart { border: 1px solid #ddd; margin-top: 10px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -104,6 +82,7 @@
                         <th>อาการ</th>
                         <th>การวินิจฉัย</th>
                         <th>การรักษา</th>
+                        <th>รูปวาด</th>
                         <th>การดำเนินการ</th>
                     </tr>
                 </thead>
@@ -144,10 +123,19 @@
             canvas.isDrawingMode = true;
             canvas.freeDrawingBrush.width = 2;
             canvas.freeDrawingBrush.color = "#000000";
+            
+            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
+                img.scaleToWidth(canvas.width);
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            });
         }
 
         function clearCanvas() {
             canvas.clear();
+            fabric.Image.fromURL('https://i.postimg.cc/G9n4kJq8/Untitled-design.png', function(img) {
+                img.scaleToWidth(canvas.width);
+                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            });
         }
 
         function addTreatment(e) {
@@ -455,6 +443,62 @@
                 saveTreatments();
                 loadTreatmentHistory();
                 alert('ลบข้อมูลการรักษาเรียบร้อยแล้ว');
+            }
+        }
+
+        function loadTreatmentHistory() {
+            if (!selectedPatient) return;
+            const tbody = document.querySelector('#treatmentHistory tbody');
+            tbody.innerHTML = '';
+            treatments
+                .filter(t => t.patientHN === selectedPatient.hn)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .forEach(treatment => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = treatment.date;
+                    row.insertCell(1).textContent = treatment.symptoms;
+                    row.insertCell(2).textContent = treatment.diagnosis;
+                    row.insertCell(3).textContent = treatment.treatment;
+                    const imageCell = row.insertCell(4);
+                    const img = document.createElement('img');
+                    img.src = treatment.bodyChartImage;
+                    img.style.width = '100px';
+                    img.style.height = 'auto';
+                    imageCell.appendChild(img);
+                    const actionsCell = row.insertCell(5);
+                    actionsCell.innerHTML = `
+                        <button onclick="showTreatmentDetail('${treatment.patientHN}', '${treatment.date}')">รายละเอียด</button>
+                        <button onclick="deleteTreatment('${treatment.patientHN}', '${treatment.date}')">ลบ</button>
+                        <button onclick="printMedicalCertificate('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบรับรองแพทย์</button>
+                        <button onclick="saveMedicalCertificatePDF('${treatment.patientHN}', '${treatment.date}')">บันทึก PDF</button>
+                        <button onclick="printReceipt('${treatment.patientHN}', '${treatment.date}')">พิมพ์ใบเสร็จ</button>
+                    `;
+                });
+        }
+
+        function showTreatmentDetail(patientHN, treatmentDate) {
+            const treatment = treatments.find(t => t.patientHN === patientHN && t.date === treatmentDate);
+            if (treatment) {
+                const detailContent = `
+                    <h3>รายละเอียดการรักษา</h3>
+                    <p><strong>วันที่:</strong> ${treatment.date}</p>
+                    <p><strong>Vital Signs:</strong></p>
+                    <ul>
+                        <li>ความดันโลหิต: ${treatment.vitalSigns.bloodPressure}</li>
+                        <li>ชีพจร: ${treatment.vitalSigns.pulse}</li>
+                        <li>อุณหภูมิ: ${treatment.vitalSigns.temperature}</li>
+                        <li>อัตราการหายใจ: ${treatment.vitalSigns.respiratoryRate}</li>
+                    </ul>
+                    <p><strong>อาการ:</strong> ${treatment.symptoms}</p>
+                    <p><strong>การวินิจฉัย:</strong> ${treatment.diagnosis}</p>
+                    <p><strong>การรักษา:</strong> ${treatment.treatment}</p>
+                    <p><strong>ยาที่ได้รับ:</strong> ${treatment.medication}</p>
+                    <p><strong>วันนัดครั้งต่อไป:</strong> ${treatment.nextAppointment}</p>
+                    <h4>รูปวาด:</h4>
+                    <img src="${treatment.bodyChartImage}" alt="Body Chart" style="max-width: 100%; height: auto;">
+                `;
+                document.getElementById('treatmentDetailContent').innerHTML = detailContent;
+                document.getElementById('treatmentDetailModal').style.display = 'block';
             }
         }
 
