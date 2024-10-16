@@ -15,7 +15,7 @@
         
         <div class="tabs">
             <button class="tab active" onclick="showTab('patientTab')">ข้อมูลผู้ป่วย</button>
-            <button class="tab" id="treatmentTab" onclick="showTab('treatmentTabContent')">บันทึกการรักษา</button>
+            <button class="tab" onclick="showTab('treatmentTabContent')">บันทึกการรักษา</button>
             <button class="tab" onclick="showTab('receiptTab')">พิมพ์ใบเสร็จ</button>
         </div>
         
@@ -156,10 +156,43 @@
             });
         }
 
+        function showTab(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach(button => button.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+        }
+
         window.selectPatientForTreatment = selectPatientForTreatment;
         window.deletePatient = deletePatient;
         window.showTab = showTab;
         window.closeTreatmentDetailModal = closeTreatmentDetailModal;
+
+        function selectPatientForTreatment(hn) {
+            const patient = patients.find(p => p.hn === hn);
+            if (patient) {
+                showTab('treatmentTabContent');
+                selectPatient(patient);
+            }
+        }
+
+        function deletePatient(hn) {
+            if (confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลผู้ป่วยรายนี้?')) {
+                patients = patients.filter(p => p.hn !== hn);
+                treatments = treatments.filter(t => t.patientHN !== hn);
+                savePatients();
+                saveTreatments();
+                loadPatients();
+                alert('ลบข้อมูลผู้ป่วยเรียบร้อยแล้ว');
+            }
+        }
+
+        function closeTreatmentDetailModal() {
+            document.getElementById('treatmentDetailModal').style.display = 'none';
+        }
     </script>
 </body>
 </html>
